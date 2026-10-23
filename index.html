@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SoCLaaS EvolveBench — 12 models, generate–evaluate–evolve</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0d1117; color: #dbe2ee; font: 16px/1.65 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 1020px; margin: 0 auto; padding: 48px 28px 80px; }
+  h1 { font-size: 40px; line-height: 1.15; margin: 0 0 10px; letter-spacing: -0.5px; }
+  h1 .grad { background: linear-gradient(90deg,#ff7ab6,#7ad7ff,#8affc1); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  h2 { font-size: 26px; margin: 54px 0 6px; letter-spacing: -0.3px; }
+  h3 { font-size: 18px; margin: 26px 0 8px; color: #9fb3d1; }
+  p.lead { font-size: 19px; color: #aab8cf; margin: 8px 0 0; }
+  p { margin: 12px 0; }
+  a { color: #7ad7ff; }
+  .card { background: #131b28; border: 1px solid #223049; border-radius: 14px; padding: 22px 24px; margin: 18px 0; }
+  .stats { display: flex; gap: 14px; flex-wrap: wrap; margin: 22px 0; }
+  .stat { flex: 1 1 150px; background: #131b28; border: 1px solid #223049; border-radius: 14px; padding: 16px 18px; }
+  .stat b { display: block; font-size: 26px; color: #fff; }
+  .stat span { color: #8ba1c2; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; margin: 14px 0; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #223049; }
+  th { color: #8ba1c2; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.4px; }
+  tr.hl td { background: #1a2436; }
+  .chart { width: 100%; height: auto; background: #0f1622; border: 1px solid #223049; border-radius: 14px; margin: 14px 0; }
+  .ax { font-size: 12px; fill: #8ba1c2; }
+  .lbl { font-size: 13.5px; fill: #dbe2ee; }
+  .grid { stroke: #1c2739; }
+  .axis { stroke: #33445f; }
+  pre { background: #0a0f18; border: 1px solid #223049; border-radius: 12px; padding: 16px 18px; overflow-x: auto; font: 12.5px/1.55 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: #c9d6ea; }
+  .pill { display: inline-block; background: #1a2436; border: 1px solid #2c3d5c; color: #9fb3d1; border-radius: 999px; padding: 3px 12px; font-size: 13px; margin: 2px 4px 2px 0; }
+  .win { color: #8affc1; } .warn { color: #ffd479; } .bad { color: #ff7a7a; }
+  footer { margin-top: 60px; color: #66799a; font-size: 14px; border-top: 1px solid #223049; padding-top: 20px; }
+</style></head><body><div class="wrap">
+
+<h1>SoCLaaS <span class="grad">EvolveBench</span></h1>
+<p class="lead">A FunSearch / AlphaEvolve-style experiment: <b>12 LLMs on a university GPU cluster</b> were made to write, execute, and iteratively improve real algorithms — scoring <b>correctness and performance by actually running the code</b>.</p>
+
+<div class="stats">
+  <div class="stat"><b>478</b><span>candidate programs generated & executed</span></div>
+  <div class="stat"><b>2,493,324</b><span>output tokens of inference</span></div>
+  <div class="stat"><b>2</b><span>tasks: cache eviction · bin packing</span></div>
+  <div class="stat"><b>9.6M</b><span>cache requests simulated in sandboxes</span></div>
+</div>
+
+<h2>The loop</h2>
+<div class="card">
+<p>Each model starts from a blank prompt. Every generation it receives the task spec, the <b>surviving parent programs with their measured fitness</b>, per-trace score breakdowns, and the <b>exact errors</b> of failed children. It writes a new candidate; the candidate runs in a subprocess sandbox against fixed workloads; the score feeds the next generation. Slow reasoning models evolved parallel <b>islands</b>. No human wrote any algorithm — only the fitness function.</p>
+<pre>prompt ──▶ model generates program ──▶ sandbox executes it ──▶ measured fitness
+   ▲                                                            │
+   └──────────── parent code + score + error feedback ◀─────────┘</pre>
+<p><span class="pill">temperature 0.9</span><span class="pill">top-3 archive + random parent</span><span class="pill">duplicate rejection</span><span class="pill">timeout → fail → fed back as text</span></p>
+</div>
+
+<h2>Task 1 — Evolve an online cache eviction policy</h2>
+<p>Candidates implement <code>evict(cache, meta) → index</code>, called on every miss of a 50-entry cache over five fixed 20,000-request traces: Zipf, drifting-Zipf, scan+hot-set, cyclic-loop-with-bursts, and a scan-heavy LRU-killer. Fitness = <b>mean hit rate</b>. The meta dictionary deliberately exposes raw materials (frequencies, last-access times, a 64-key recent window) but no ground truth about the future.</p>
+<table><tr><th>model</th><th>best</th><th>vs LRU</th><th>candidates</th><th>failed</th><th>output tokens</th></tr>
+<tr><td>soclaas_x-test-2</td><td><b>0.6443</b></td><td>+48%</td><td>31</td><td>13</td><td>565,804</td></tr>
+<tr><td>soclaas_x-test-1</td><td><b>0.6206</b></td><td>+43%</td><td>21</td><td>18</td><td>300,000</td></tr>
+<tr><td>soclaas_qwen3-coder-next</td><td><b>0.6162</b></td><td>+42%</td><td>20</td><td>1</td><td>30,422</td></tr>
+<tr><td>soclaas_llama3.1_8b</td><td><b>0.5857</b></td><td>+35%</td><td>20</td><td>12</td><td>10,157</td></tr>
+<tr><td>soclaas_qwen3-vl_32b</td><td><b>0.5653</b></td><td>+30%</td><td>20</td><td>2</td><td>25,385</td></tr>
+<tr><td>soclaas_ornith1.5_35b</td><td><b>0.5534</b></td><td>+28%</td><td>20</td><td>14</td><td>42,000</td></tr>
+<tr><td>soclaas_qwen3.8_27b</td><td><b>0.4829</b></td><td>+11%</td><td>29</td><td>27</td><td>280,000</td></tr>
+<tr><td>soclaas_gemma4_26b</td><td><b>0.4759</b></td><td>+10%</td><td>25</td><td>24</td><td>0</td></tr>
+<tr><td>soclaas_qwen3.6_35b</td><td><b>0.4703</b></td><td>+8%</td><td>20</td><td>0</td><td>50,231</td></tr>
+<tr><td>soclaas_coding</td><td><b>0.4527</b></td><td>+4%</td><td>20</td><td>19</td><td>72,000</td></tr>
+<tr><td>soclaas_x-test-3</td><td><b>—</b></td><td>—</td><td>30</td><td>30</td><td>0</td></tr>
+<tr><td>soclaas_qwen3.5_9b</td><td><b>—</b></td><td>—</td><td>32</td><td>32</td><td>107,938</td></tr></table>
+
+<div class="card">
+<h3>Evolution curves — every model's best-so-far, generation by generation</h3>
+<svg viewBox="0 0 920 420" class="chart">
+<line x1="46" y1="301.1" x2="874" y2="301.1" class="grid"/>
+<text x="38" y="305.1" class="ax" text-anchor="end">0.40</text>
+<line x1="46" y1="228.2" x2="874" y2="228.2" class="grid"/>
+<text x="38" y="232.2" class="ax" text-anchor="end">0.50</text>
+<line x1="46" y1="155.3" x2="874" y2="155.3" class="grid"/>
+<text x="38" y="159.3" class="ax" text-anchor="end">0.60</text>
+<line x1="46" y1="82.4" x2="874" y2="82.4" class="grid"/>
+<text x="38" y="86.4" class="ax" text-anchor="end">0.70</text>
+<line x1="46" y1="74.1" x2="874" y2="74.1" stroke="#888" stroke-dasharray="6 5" stroke-width="1.4"/>
+<text x="870" y="69.1" class="ax" text-anchor="end" fill="#888">Belady (optimal) 0.712</text>
+<line x1="46" y1="208.9" x2="874" y2="208.9" stroke="#888" stroke-dasharray="6 5" stroke-width="1.4"/>
+<text x="870" y="203.9" class="ax" text-anchor="end" fill="#888">Random 0.527</text>
+<line x1="46" y1="276.4" x2="874" y2="276.4" stroke="#888" stroke-dasharray="6 5" stroke-width="1.4"/>
+<text x="870" y="271.4" class="ax" text-anchor="end" fill="#888">LRU 0.434</text>
+<polyline points="126.1,163.1 152.8,141.0 179.5,135.0 206.3,134.3 233.0,131.8 259.7,131.8 286.4,128.2 313.1,128.2 339.8,125.7 366.5,125.7 393.2,125.7 419.9,125.7 446.6,125.7 473.4,125.7 500.1,125.7 526.8,125.7 553.5,125.0 580.2,125.0 606.9,125.0 633.6,125.0 660.3,125.0 687.0,123.0 713.7,123.0 740.5,123.0 767.2,123.0 793.9,123.0 820.6,123.0 847.3,123.0" fill="none" stroke="#aaa" stroke-width="2.4" stroke-linejoin="round"/>
+<circle cx="847.3" cy="123.0" r="4" fill="#aaa"/>
+<text x="854.3" y="127.0" class="ax" fill="#aaa">soclaas_x-test-2</text>
+<polyline points="46.0,169.9 72.7,169.9 99.4,169.9 126.1,169.9 152.8,169.9 179.5,169.9 206.3,169.9 233.0,169.9 259.7,169.9 286.4,169.9 313.1,169.9 339.8,169.9 366.5,140.3 393.2,140.3 419.9,140.3 446.6,140.3 473.4,140.3 500.1,140.3 526.8,140.3 553.5,140.3 580.2,140.3" fill="none" stroke="#aaa" stroke-width="2.4" stroke-linejoin="round"/>
+<circle cx="580.2" cy="140.3" r="4" fill="#aaa"/>
+<text x="587.2" y="144.3" class="ax" fill="#aaa">soclaas_x-test-1</text>
+<polyline points="46.0,261.1 72.7,261.1 99.4,261.1 126.1,213.5 152.8,213.5 179.5,213.5 206.3,213.5 233.0,158.0 259.7,158.0 286.4,143.6 313.1,143.6 339.8,143.6 366.5,143.6 393.2,143.6 419.9,143.6 446.6,143.6 473.4,143.6 500.1,143.6 526.8,143.6 553.5,143.6" fill="none" stroke="#aaa" stroke-width="2.4" stroke-linejoin="round"/>
+<circle cx="553.5" cy="143.6" r="4" fill="#aaa"/>
+<text x="560.5" y="147.6" class="ax" fill="#aaa">soclaas_qwen3-coder-next</text>
+<polyline points="152.8,279.6 179.5,276.4 206.3,276.4 233.0,272.2 259.7,272.2 286.4,272.2 313.1,272.2 339.8,165.8 366.5,165.8 393.2,165.8 419.9,165.8 446.6,165.7 473.4,165.7 500.1,165.7 526.8,165.7 553.5,165.7" fill="none" stroke="#aaa" stroke-width="2.4" stroke-linejoin="round"/>
+<circle cx="553.5" cy="165.7" r="4" fill="#aaa"/>
+<text x="560.5" y="169.7" class="ax" fill="#aaa">soclaas_llama3.1_8b</text>
+<polyline points="46.0,371.5 72.7,281.0 99.4,245.4 126.1,245.4 152.8,245.4 179.5,245.4 206.3,245.4 233.0,245.4 259.7,180.6 286.4,180.6 313.1,180.6 339.8,180.6 366.5,180.6 393.2,180.6 419.9,180.6 446.6,180.6 473.4,180.6 500.1,180.6 526.8,180.6 553.5,180.6" fill="none" stroke="#aaa" stroke-width="2.4" stroke-linejoin="round"/>
+<circle cx="553.5" cy="180.6" r="4" fill="#aaa"/>
+<text x="560.5" y="184.6" class="ax" fill="#aaa">soclaas_qwen3-vl_32b</text>
+<polyline points="46.0,284.0 72.7,284.0 99.4,284.0 126.1,284.0 152.8,284.0 179.5,284.0 206.3,284.0 233.0,284.0 259.7,284.0 286.4,191.4 313.1,191.4 339.8,189.3 366.5,189.3 393.2,189.3 419.9,189.3 446.6,189.3 473.4,189.3 500.1,189.3 526.8,189.3 553.5,189.3" fill="none" stroke="#aaa" stroke-width="2.4" stroke-linejoin="round"/>
+<circle cx="553.5" cy="189.3" r="4" fill="#aaa"/>
+<text x="560.5" y="193.3" class="ax" fill="#aaa">soclaas_ornith1.5_35b</text>
+<polyline points="72.7,240.7 99.4,240.7 126.1,240.7 152.8,240.7 179.5,240.7 206.3,240.7 233.0,240.7 259.7,240.7 286.4,240.7 313.1,240.7 339.8,240.7 366.5,240.7 393.2,240.7 419.9,240.7 446.6,240.7 473.4,240.7 500.1,240.7 526.8,240.7 553.5,240.7 580.2,240.7 606.9,240.7 633.6,240.7 660.3,240.7 687.0,240.7 713.7,240.7 740.5,240.7 767.2,240.7 793.9,240.7" fill="none" stroke="#aaa" stroke-width="2.4" stroke-linejoin="round"/>
+<circle cx="793.9" cy="240.7" r="4" fill="#aaa"/>
+<text x="800.9" y="244.7" class="ax" fill="#aaa">soclaas_qwen3.8_27b</text>
+<polyline points="339.8,245.8 366.5,245.8 393.2,245.8 419.9,245.8 446.6,245.8 473.4,245.8 500.1,245.8 526.8,245.8 553.5,245.8 580.2,245.8 606.9,245.8 633.6,245.8 660.3,245.8 687.0,245.8" fill="none" stroke="#aaa" stroke-width="2.4" stroke-linejoin="round"/>
+<circle cx="687.0" cy="245.8" r="4" fill="#aaa"/>
+<text x="694.0" y="249.8" class="ax" fill="#aaa">soclaas_gemma4_26b</text>
+<polyline points="46.0,271.4 72.7,271.4 99.4,249.8 126.1,249.8 152.8,249.8 179.5,249.8 206.3,249.8 233.0,249.8 259.7,249.8 286.4,249.8 313.1,249.8 339.8,249.8 366.5,249.8 393.2,249.8 419.9,249.8 446.6,249.8 473.4,249.8 500.1,249.8 526.8,249.8 553.5,249.8" fill="none" stroke="#aaa" stroke-width="2.4" stroke-linejoin="round"/>
+<circle cx="553.5" cy="249.8" r="4" fill="#aaa"/>
+<text x="560.5" y="253.8" class="ax" fill="#aaa">soclaas_qwen3.6_35b</text>
+<polyline points="72.7,262.7 99.4,262.7 126.1,262.7 152.8,262.7 179.5,262.7 206.3,262.7 233.0,262.7 259.7,262.7 286.4,262.7 313.1,262.7 339.8,262.7 366.5,262.7 393.2,262.7 419.9,262.7 446.6,262.7 473.4,262.7 500.1,262.7 526.8,262.7 553.5,262.7" fill="none" stroke="#aaa" stroke-width="2.4" stroke-linejoin="round"/>
+<circle cx="553.5" cy="262.7" r="4" fill="#aaa"/>
+<text x="560.5" y="266.7" class="ax" fill="#aaa">soclaas_coding</text>
+<line x1="46" y1="374" x2="874" y2="374" class="axis"/>
+<text x="460.0" y="412" class="ax" text-anchor="middle">candidates generated & evaluated (best-so-far)</text>
+</svg>
+<p style="color:#8ba1c2; font-size:14px;">Dashed lines are classical baselines computed on the same traces. Every curve that leaves the floor is a policy the model invented, tested, and kept.</p>
+</div>
+
+<div class="card">
+<h3>Final scores with inference cost</h3>
+<svg viewBox="0 0 920 620" class="chart">
+<text x="46" y="68.0" class="lbl">soclaas_x-test-2</text>
+<rect x="216" y="46" width="582.4472" height="34" rx="6" fill="#888" opacity="0.92"/>
+<text x="808.4472" y="68.0" class="lbl" fill="#eee">0.6443  ·  565,804 tok · 31 candidates</text>
+<text x="46" y="115.0" class="lbl">soclaas_x-test-1</text>
+<rect x="216" y="93" width="561.00432" height="34" rx="6" fill="#888" opacity="0.92"/>
+<text x="787.00432" y="115.0" class="lbl" fill="#eee">0.6206  ·  300,000 tok · 21 candidates</text>
+<text x="46" y="162.0" class="lbl">soclaas_qwen3-coder-next</text>
+<rect x="216" y="140" width="557.00864" height="34" rx="6" fill="#888" opacity="0.92"/>
+<text x="783.00864" y="162.0" class="lbl" fill="#eee">0.6162  ·  30,422 tok · 20 candidates</text>
+<text x="46" y="209.0" class="lbl">soclaas_llama3.1_8b</text>
+<rect x="216" y="187" width="529.49088" height="34" rx="6" fill="#888" opacity="0.92"/>
+<text x="755.49088" y="209.0" class="lbl" fill="#eee">0.5857  ·  10,157 tok · 20 candidates</text>
+<text x="46" y="256.0" class="lbl">soclaas_qwen3-vl_32b</text>
+<rect x="216" y="234" width="511.0312" height="34" rx="6" fill="#888" opacity="0.92"/>
+<text x="737.0312" y="256.0" class="lbl" fill="#eee">0.5653  ·  25,385 tok · 20 candidates</text>
+<text x="46" y="303.0" class="lbl">soclaas_ornith1.5_35b</text>
+<rect x="216" y="281" width="500.25551999999993" height="34" rx="6" fill="#888" opacity="0.92"/>
+<text x="726.2555199999999" y="303.0" class="lbl" fill="#eee">0.5534  ·  42,000 tok · 20 candidates</text>
+<text x="46" y="350.0" class="lbl">soclaas_qwen3.8_27b</text>
+<rect x="216" y="328" width="436.57775999999996" height="34" rx="6" fill="#888" opacity="0.92"/>
+<text x="662.5777599999999" y="350.0" class="lbl" fill="#eee">0.4829  ·  280,000 tok · 29 candidates</text>
+<text x="46" y="397.0" class="lbl">soclaas_gemma4_26b</text>
+<rect x="216" y="375" width="430.19552" height="34" rx="6" fill="#888" opacity="0.92"/>
+<text x="656.19552" y="397.0" class="lbl" fill="#eee">0.4759  ·  0 tok · 25 candidates</text>
+<text x="46" y="444.0" class="lbl">soclaas_qwen3.6_35b</text>
+<rect x="216" y="422" width="425.18736" height="34" rx="6" fill="#888" opacity="0.92"/>
+<text x="651.18736" y="444.0" class="lbl" fill="#eee">0.4703  ·  50,231 tok · 20 candidates</text>
+<text x="46" y="491.0" class="lbl">soclaas_coding</text>
+<rect x="216" y="469" width="409.25888" height="34" rx="6" fill="#888" opacity="0.92"/>
+<text x="635.25888" y="491.0" class="lbl" fill="#eee">0.4527  ·  72,000 tok · 20 candidates</text>
+<text x="46" y="538.0" class="lbl">soclaas_x-test-3</text>
+<rect x="216" y="516" width="2" height="34" rx="6" fill="#888" opacity="0.92"/>
+<text x="228" y="538.0" class="lbl" fill="#f66">fail  ·  0 tok · 30 candidates</text>
+<text x="46" y="585.0" class="lbl">soclaas_qwen3.5_9b</text>
+<rect x="216" y="563" width="2" height="34" rx="6" fill="#888" opacity="0.92"/>
+<text x="228" y="585.0" class="lbl" fill="#f66">fail  ·  107,938 tok · 32 candidates</text>
+</svg>
+<p style="color:#8ba1c2; font-size:14px;">Bar length = best mean hit rate reached. The annotation on each bar shows total output tokens burned — the reasoners spent 30–50× more than the 8B model for a fraction more fitness.</p>
+</div>
+
+<h3>What the winner actually invented</h3>
+<p><b class="win">DeepSeek V4.1 Flash — 0.6443 (+48% over LRU)</b> converged on a <i>trace-shape classifier</i>: it computes a uniqueness ratio and burst statistics over the recent window, detects "scan-like" vs "cyclic-like" vs "hot-set" regimes, and switches between frequency-weighted LRU, MRU-among-cold (anti-loop-thrash), and burst-protected eviction. An Adaptive Replacement Policy, discovered by iteration.</p>
+<pre># soclaas_x-test-2 | cache | fitness 0.6443
+import math
+import random
+
+
+def evict(cache, meta):
+    if not cache:
+        return 0
+
+    n = len(cache)
+    time = meta.get(&quot;time&quot;, 0)
+    cache_freq = meta.get(&quot;cache_freq&quot;, {})
+    cache_last = meta.get(&quot;cache_last&quot;, {})
+    recent = meta.get(&quot;recent&quot;, [])
+    capacity = meta.get(&quot;capacity&quot;, n)
+
+    recent_count = {}
+    for k in recent:
+        recent_count[k] = recent_count.get(k, 0) + 1
+
+    L = len(recent)
+    uniq = len(recent_count)
+    uniq_ratio = (uniq / L) if L else 0.0
+    max_r = max(recent_count.values()) if recent_count else 0
+
+    freqs = [cache_freq.get(k, 0) for k in cache]
+    lasts = [cache_last.get(k, -1) for k in cache]
+
+    min_f = min(freqs) if freqs else 0
+    max_f = max(freqs) if freqs else 0
+
+    def mru_among(indices):
+        best_i = indices[0]
+        best_last = lasts[best_i]</pre>
+<p><b class="win">GLM 5.3 Flash — 0.6206</b> took a different route: a <i>poor-man's Belady</i>. Per key it remembers the last 3 inter-arrival gaps, predicts the next access time, evicts the key predicted to return furthest away; keys seen once are treated as never-returning (scan resistance), and keys overdue vs their own prediction fall back to LRU.</p>
+<pre># soclaas_x-test-1 | cache | fitness 0.62058
+import math
+import random
+
+# --- tunable constants (targets for future generations) ---
+_TAU = 800.0   # recency decay time constant, in requests (~16 * capacity)
+_BAND = 2.0    # near-tie band: evict randomly among keys scoring within
+               # _BAND * min_score  (randomization dodges LRU&#x27;s cyclic pathology)
+
+
+def evict(cache, meta):
+    &quot;&quot;&quot;Return index in `cache` of the item to evict on a miss.
+
+    Policy: minimum time-decayed frequency
+        score = freq * exp(-age / tau),  age = time - last_access
+    with randomized tie-breaking inside a near-tie band.
+    &quot;&quot;&quot;
+    n = len(cache)
+    if n &lt;= 1:
+        return 0
+
+    t = meta[&quot;time&quot;]
+    freq = meta.get(&quot;cache_freq&quot;) or {}
+    last = meta.get(&quot;cache_last&quot;) or {}
+
+    scores = []
+    for k in cache:
+        f = freq.get(k, 1)
+        if f &lt; 1:
+            f = 1
+        age = t - last.get(k, t)
+        if age &lt; 0:
+            age = 0
+        scores.append(f * math.exp(-age / _TAU))</pre>
+
+<h2>Task 2 — Evolve a bin-packing heuristic</h2>
+<p>Candidates implement <code>pack(items, capacity)</code>; score = mean bins used ÷ L1 lower bound over 16 instances (uniform, small-size sets, mid-size, mixed). Lower is better; <b>First-Fit-Decreasing scores 1.0853</b> on these instances.</p>
+<table><tr><th>model</th><th>best</th><th>vs FFD (1.0853)</th><th>candidates</th><th>failed</th><th>output tokens</th></tr>
+<tr><td>soclaas_x-test-2</td><td><b>1.0853</b></td><td>+0.0%</td><td>20</td><td>4</td><td>486,693</td></tr>
+<tr><td>soclaas_gemma4_26b</td><td><b>1.0853</b></td><td>+0.0%</td><td>5</td><td>4</td><td>0</td></tr>
+<tr><td>soclaas_qwen3.6_35b</td><td><b>1.0853</b></td><td>+0.0%</td><td>20</td><td>4</td><td>41,256</td></tr>
+<tr><td>soclaas_x-test-1</td><td><b>1.0853</b></td><td>+0.0%</td><td>14</td><td>10</td><td>0</td></tr>
+<tr><td>soclaas_qwen3-coder-next</td><td><b>1.0853</b></td><td>+0.0%</td><td>20</td><td>5</td><td>23,986</td></tr>
+<tr><td>soclaas_ornith1.5_35b</td><td><b>1.0853</b></td><td>+0.0%</td><td>20</td><td>14</td><td>268,310</td></tr>
+<tr><td>soclaas_qwen3.8_27b</td><td><b>1.0853</b></td><td>+0.0%</td><td>11</td><td>10</td><td>0</td></tr>
+<tr><td>soclaas_coding</td><td><b>1.0853</b></td><td>+0.0%</td><td>20</td><td>19</td><td>160,000</td></tr>
+<tr><td>soclaas_qwen3-vl_32b</td><td><b>1.0853</b></td><td>+0.0%</td><td>20</td><td>4</td><td>18,565</td></tr>
+<tr><td>soclaas_llama3.1_8b</td><td><b>1.1189</b></td><td>+3.1%</td><td>22</td><td>16</td><td>10,577</td></tr>
+<tr><td>soclaas_qwen3.5_9b</td><td><b>—</b></td><td>—</td><td>18</td><td>18</td><td>0</td></tr></table>
+<div class="card">
+<p><b>The plateau.</b> Every model that produced valid code — from Llama 8B to DeepSeek V4.1 — converged to <i>exactly</i> the FFD reference, with identical per-instance score vectors. Single-shot ordering heuristics saturate at FFD; breaking below it requires embedding local search inside the candidate within the time budget, which no model found in 20 generations. Meanwhile Llama 3.1 8B — the only model that never hit the attractor — finished <i>worse</i> (1.1189) but was still learning when its budget ended.</p>
+<p><b>Lesson:</b> the shape of the fitness landscape decides how much room evolution has. Online caching, with its adversarial, non-stationary structure, rewards invention; classic deterministic heuristics have a hard attractor at the textbook algorithm.</p>
+</div>
+
+<h2>Who is the best at iteration?</h2>
+<div class="card">
+<table>
+<tr><th></th><th>model</th><th>cache (↑)</th><th>cost profile</th><th>verdict</th></tr>
+<tr class="hl"><td>🥇</td><td>DeepSeek V4.1 Flash</td><td>0.6443</td><td>~28k tok/candidate</td><td>best programs, huge inference appetite</td></tr>
+<tr><td>🥈</td><td>GLM 5.3 Flash</td><td>0.6206</td><td>~14k tok/candidate</td><td>creative strategies, slow, some crashes</td></tr>
+<tr><td>🥉</td><td>Qwen3 Coder Next 80B</td><td>0.6162</td><td>~1.5k tok/candidate</td><td>near-frontier quality at coder-model prices</td></tr>
+<tr><td>💰</td><td>Llama 3.1 8B</td><td>0.5857</td><td>~0.5k tok/candidate</td><td><b>best fitness per token by ~30×</b>; steady, clean iteration</td></tr>
+<tr><td>💀</td><td>Qwen 3.5 9B</td><td>0 / 50 valid</td><td>—</td><td>burns its whole output budget "thinking" in prose before writing any code</td></tr>
+</table>
+<p>Two failure modes mattered as much as raw ability: <b>budget discipline</b> (Qwen 3.5 never emitted a single runnable program in 50 tries, even with format remediation) and <b>reliability</b> (x-test-3 was down all day; Gemma 4's ollama backend collapsed under concurrent load). In an evolution loop, a model that can't reliably emit a complete, runnable artifact scores zero regardless of its intelligence.</p>
+</div>
+
+<footer>
+SoCLaaS EvolveBench · harness, raw logs &amp; evolved programs: <a href="https://github.com/randomwish/soclaas-evolvebench">github.com/randomwish/soclaas-evolvebench</a><br>
+Generate–evaluate–evolve in the style of FunSearch (DeepMind, 2023) and AlphaEvolve (2025). Models served by the SoCLaaS cluster (NUS SoC). All fitness numbers are measured, never estimated.
+</footer>
+</div></body></html>
