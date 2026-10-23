@@ -1,0 +1,11 @@
+{"gen": 0, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 1, "error": "LLM call failed after 4 tries: HTTP Error 429: Too Many Requests"}
+{"gen": 2, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 3, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 4, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 5, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 6, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 7, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 8, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 9, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 10, "FINAL_BEST": null, "tok_out": 0, "tok_in": 0}

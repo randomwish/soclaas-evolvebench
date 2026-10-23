@@ -1,0 +1,16 @@
+{"gen": 0, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 1, "score": 0.47588, "per": {"zipf": 0.5488, "churn": 0.6815, "scan_hot": 0.6076, "loop": 0.5002, "scan60": 0.0413}, "errors": [], "eval_s": 1.47, "tok_out": 3677, "code_chars": 1167, "code": "import math\n\ndef evict(cache, meta) -> int:\n    \"\"\"\n    Implements an Aging-based Frequency-Recency Hybrid policy.\n    Calculates an importance score for each item in the cache and \n    evicts the item with the minimum score.\n    \"\"\"\n    curr_time = meta['time']\n    cache_freq = meta['cache_freq']\n    cache_last = meta['cache_last']\n    \n    best_idx = -1\n    min_score = float('inf')\n\n    for i, key in enumerate(cache):\n        # Frequency of the key seen so far in the trace\n        freq = cache_freq.get(key, 0)\n        \n        # Time elapsed since this key was last requested\n        last_access = cache_last.get(key, curr_time)\n        gap = curr_time - last_access\n        \n        # Importance Score:\n        # We use log-transformed frequency to prevent high-frequency keys \n        # from dominating the cache indefinitely (protecting against drifting Zipf).\n        # We use square-root decay on the recency gap to provide a smoother \n        # transition than LRU (protecting against scans).\n        score = math.log1p(freq) / math.sqrt(gap + 1)\n\n        if score < min_score:\n            min_score = score\n            best_idx = i\n\n    return best_idx", "new_best": true}
+{"gen": 2, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 3, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 4, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 5, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 6, "error": "LLM call failed after 4 tries: HTTP Error 429: Too Many Requests"}
+{"gen": 7, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 8, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 9, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 10, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 11, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 12, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 13, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 14, "error": "LLM call failed after 4 tries: HTTP Error 502: Bad Gateway"}
+{"gen": 15, "FINAL_BEST": 0.47588, "tok_out": 0, "tok_in": 0}

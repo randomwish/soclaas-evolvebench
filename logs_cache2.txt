@@ -1,0 +1,41 @@
+baselines: {"zipf": 0.6635, "churn": 0.8178, "scan_hot": 0.676, "loop": 0.581, "scan60": 0.8192} {'lru_mean': 0.4339, 'lru_per': {'zipf': 0.4631, 'churn': 0.6632, 'scan_hot': 0.5176, 'loop': 0.5002, 'scan60': 0.0254}, 'lfu_mean': 0.4583, 'lfu_per': {'zipf': 0.5986, 'churn': 0.5023, 'scan_hot': 0.6156, 'loop': 0.5338, 'scan60': 0.0413}, 'random_mean': 0.5265, 'random_per': {'zipf': 0.4092, 'churn': 0.604, 'scan_hot': 0.4502, 'loop': 0.5009, 'scan60': 0.6681}, 'belady_mean': 0.7115, 'belady_per': {'zipf': 0.6635, 'churn': 0.8178, 'scan_hot': 0.676, 'loop': 0.581, 'scan60': 0.8192}}
+[resume] soclaas/gemma4:26b: restarting at gen 5 with 1 archived candidates
+[resume] soclaas/x-test-1: restarting at gen 1 with 1 archived candidates
+[resume] soclaas/coding: restarting at gen 9 with 1 archived candidates
+[resume] soclaas/qwen3.8:27b: restarting at gen 6 with 1 archived candidates
+[resume] soclaas/ornith1.5:35b: restarting at gen 3 with 5 archived candidates
+[resume] soclaas/x-test-2: restarting at gen 5 with 5 archived candidates
+[resume] soclaas/qwen3.5:9b: restarting at gen 0 with 0 archived candidates
+[resume] soclaas/x-test-3: restarting at gen 10 with 0 archived candidates
+[done] soclaas/qwen3.5:9b: None
+[done] soclaas/ornith1.5:35b: 0.55338
+[done] soclaas/x-test-2#i1: 0.6279600000000001
+[done] soclaas/coding: 0.45272
+[done] soclaas/x-test-2#i2: 0.62616
+[done] soclaas/qwen3.8:27b#i1: 0.47153999999999996
+[done] soclaas/x-test-1#i1: 0.58002
+[done] soclaas/x-test-2: 0.64064
+[done] soclaas/x-test-3: None
+[done] soclaas/x-test-3#i1: None
+[done] soclaas/x-test-1#i2: 0.5631999999999999
+[done] soclaas/qwen3.8:27b: 0.48294
+[done] soclaas/gemma4:26b: 0.47588
+[done] soclaas/gemma4:26b#i1: None
+[done] soclaas/x-test-1: 0.62058
+{
+ "soclaas/qwen3.5:9b": null,
+ "soclaas/ornith1.5:35b": 0.55338,
+ "soclaas/x-test-2#i1": 0.6279600000000001,
+ "soclaas/coding": 0.45272,
+ "soclaas/x-test-2#i2": 0.62616,
+ "soclaas/qwen3.8:27b#i1": 0.47153999999999996,
+ "soclaas/x-test-1#i1": 0.58002,
+ "soclaas/x-test-2": 0.64064,
+ "soclaas/x-test-3": null,
+ "soclaas/x-test-3#i1": null,
+ "soclaas/x-test-1#i2": 0.5631999999999999,
+ "soclaas/qwen3.8:27b": 0.48294,
+ "soclaas/gemma4:26b": 0.47588,
+ "soclaas/gemma4:26b#i1": null,
+ "soclaas/x-test-1": 0.62058
+}

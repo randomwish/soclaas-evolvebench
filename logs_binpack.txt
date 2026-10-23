@@ -1,0 +1,9 @@
+[done] soclaas/x-test-2#i2: 1.0853322045933025
+[done] soclaas/x-test-2#i1: 1.0853322045933025
+[done] soclaas/x-test-2: 1.0853322045933025
+[done] soclaas/llama3.1:8b: 1.1188803274625
+[done] soclaas/qwen3-coder-next: 1.0853322045933025
+[done] soclaas/qwen3.6:35b: 1.0853322045933025
+[done] soclaas/qwen3-vl:32b: 1.0853322045933025
+[done] soclaas/ornith1.5:35b: 1.0853322045933025
+[done] soclaas/coding: 1.0853322045933025
